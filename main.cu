@@ -94,6 +94,7 @@ __device__ double computeFitness(int n, int **pop1, int row, double **cost) {
     for(int i = 1; i < n; i++) {
         int u = pop1[row][i-1];
         int v = pop1[row][i];
+        if(u < 0 || u >= n || v < 0 || v >= n) return pathLength;
         // printf("%d %d\n", u, v);
         pathLength = pathLength + cost[u][v];
     }
@@ -103,7 +104,7 @@ __device__ double computeFitness(int n, int **pop1, int row, double **cost) {
 
 __device__ int argMaxFitness(int n, int **pop1, int low, int high, double **cost) {
     int idx = 0;
-    double mn = 1.7976931348623158e10;
+    double mn = 1.7976931348623158e+40;
     // printf("hi 106, %d %d\n", low, high);
     // return idx;
     for(int row = low; row < high; row++) {
@@ -170,9 +171,20 @@ __global__ void processKernel(int n, int POP_SIZE, int NUM_MUTATIONS, int **pop1
     adjustRangeOrder(low1, high1);
     adjustRangeOrder(low2, high2);
 
-    parent1 = argMaxFitness(n, pop1, low1, high1, cost);
+    //////////////////////////////////
+    for(int i = 0; i < n; i++) {
+        for(int j = 0; j < n; j++) {
+            double temp = cost[i][j];
+            temp = temp+1.0;
+            cost[i][j] = temp-1.0;
+        }
+    }
+
     printf("%d success %d %d %d %d\n", id, low1, high1, parent1, n);
     return;
+    /////////////////////////////////////
+
+    parent1 = argMaxFitness(n, pop1, low1, high1, cost);
     parent2 = argMaxFitness(n, pop1, low2, high2, cost);
 
     a = n*rndm[offset+4];
@@ -220,6 +232,22 @@ void generateRandomNumbers() {
     dbg;  
 }
 
+__global__ void printCost(int n, double **cost) {
+    int id = (blockIdx.x*blockDim.x)+threadIdx.x;
+    if(id > 0) return;
+    printf("237, %d\n", n);
+    int i, j;
+    for(i = 0; i < n; i++) {
+        for(j = 0; j < n; j++) {
+            printf("%lf\t", cost[i][j]);
+            // printf("yo\t");
+        }
+        printf("\n");
+    }
+    printf("hi\n");
+    return;
+}
+
 void runGA() {
     for(int genNum = 0; genNum < NUM_GEN; genNum++) {
         dbg;
@@ -260,7 +288,11 @@ int main(int argc, char **argv) {
     makeInitialPopulation();
 
     dbg;
-    runGA();
+    // runGA();
     dbg;
     // for(int i = 0; i < 1000; i++) generateRandomNumbers();
+    printCost<<<1,1>>>(n, d_cost);
+    cudaDeviceSynchronize();
+    dbg;
+    return 0;
 }
