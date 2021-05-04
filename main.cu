@@ -29,7 +29,8 @@ float *rndm;
 int RNDM_NUM_COUNT;
 
 void allocateCudaMemory() {
-    double **temp = (double**) malloc(sizeof(double*)*n);
+    // double **temp = (double**) malloc(sizeof(double*)*n);
+    double **temp = new double*[n];
     for(int i = 0; i < n; i++) {
         cudaMalloc(&temp[i], sizeof(double)*n);
         cudaMemcpy(&temp[i], cost[i], sizeof(double)*n, cudaMemcpyHostToDevice);
@@ -270,6 +271,25 @@ void runGA() {
     return;
 }
 
+void printCPUCost() {
+    for(int i = 0; i < n; i++) {
+        for(int j = 0; j < n; j++) {
+            cout << cost[i][j] << "\t";
+        }
+        cout << endl;
+    }
+    return;
+}
+
+void transposeCosts() {
+    for(int i = 0; i < n; i++) {
+        for(int j = n-1; j > i; j--) {
+            cost[i][j] = cost[j][i];
+        }
+    }
+    return;
+}
+
 int main(int argc, char **argv) {
     string filename = "TSPLIB/";
     filename = filename + argv[1];
@@ -278,6 +298,8 @@ int main(int argc, char **argv) {
 
     NUM_MUTATIONS = n*MUTATION_RATE;
     RNDM_NUM_COUNT = POP_SIZE*(6 + 2*NUM_MUTATIONS);
+
+    transposeCosts();
 
     allocateCudaMemory();
 
@@ -293,6 +315,8 @@ int main(int argc, char **argv) {
     // for(int i = 0; i < 1000; i++) generateRandomNumbers();
     printCost<<<1,1>>>(n, d_cost);
     cudaDeviceSynchronize();
+    dbg;
+    printCPUCost();
     dbg;
     return 0;
 }
