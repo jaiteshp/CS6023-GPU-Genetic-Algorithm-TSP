@@ -1,12 +1,16 @@
 #include <bits/stdc++.h>
 #include "TSPLIB_parser.h"
 #include <cuda.h>
+#include <curand.h>
+#include <ctime>
 
 using namespace std;
 #define dbg cout << __FILE__ << ":" << __LINE__ << ", " << endl
 
 const int POP_SIZE = 100;
 const int NUM_GEN = 1;
+const float MUTATION_RATE = 0.05;
+int NUM_MUTATIONS;
 int m = POP_SIZE;
 int n;
 double **cost, **d_cost;
@@ -14,7 +18,8 @@ double *X, *Y, *d_X, *d_Y;
 int *defaultArr;
 int **initialPopulation;
 int **pop1, **pop2, **ofsp;
-
+float *rndm;
+int RNDM_NUM_COUNT;
 
 void allocateCudaMemory() {
     double **temp = (double**) malloc(sizeof(double*)*n);
@@ -36,6 +41,7 @@ void allocateCudaMemory() {
 }
 
 void makeInitialPopulation() {
+    cudaMalloc(&rndm, sizeof(float)*RNDM_NUM_COUNT);
     int **cpop1, **cpop2, **cofsp;
     cpop1 = new int*[POP_SIZE];
     cpop2 = new int*[POP_SIZE];
@@ -76,9 +82,19 @@ __global__ void copyKernel(int n, int POP_SIZE, int **pop1, int **pop2) {
     return;
 }
 
-__global__ void processKernel(int n, int POP_SIZE, int **pop1, int **pop2) {
-    
-    return;
+__global__ void processKernel(int n, int POP_SIZE, int NUM_MUTATIONS, int **pop1, int **pop2, double **cost, double *X, double *Y, float *rndm) {
+    int id = (blockIdx.x*blockDim.x)+threadIdx.x;
+    if(id >= POP_SIZE) 
+        return;
+}
+
+void generateRandomNumbers() {
+    curandGenerator_t gen;
+    curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);    
+    curandSetPseudoRandomGeneratorSeed(gen, (unsigned int)time(NULL));
+    curandGenerateUniform(gen, rndm, RNDM_NUM_COUNT);
+    curandDestroyGenerator(gen);
+    cudaDeviceSynchronize();
 }
 
 void runGA() {
@@ -87,6 +103,11 @@ void runGA() {
             copyKernel<<<ceil(POP_SIZE/(float) 1024), 1024>>>(n, POP_SIZE, pop1, initialPopulation);        
         else 
             copyKernel<<<ceil(POP_SIZE/(float) 1024), 1024>>>(n, POP_SIZE, pop1, pop2);
+        cudaDeviceSynchronize();
+
+        generateRandomNumbers();
+
+        processKernel<<<ceil(POP_SIZE/(float) 1024), 1024>>>(n, POP_SIZE, NUM_MUTATIONS, pop1, pop2, d_cost, d_X, d_Y, rndm);
         cudaDeviceSynchronize();
     }
     return;
@@ -97,6 +118,9 @@ int main(int argc, char **argv) {
     filename = filename + argv[1];
     cout << filename << endl;
     ReadFile(filename, n, cost, X, Y);
+
+    NUM_MUTATIONS = n*MUTATION_RATE;
+    RNDM_NUM_COUNT = POP_SIZE*(4 + 2*NUM_MUTATIONS);
 
     allocateCudaMemory();
 
