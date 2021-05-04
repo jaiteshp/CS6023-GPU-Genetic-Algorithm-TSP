@@ -66,8 +66,6 @@ void ReadFile(string filename, int &n, double **&cost, double *&X, double *&Y) {
 				if(n == -1)
 					throw "Error: there was a problem while reading the input instance";
 
-				X.resize(n);
-				Y.resize(n);
 				for(int i = 0; i < n; i++)
 				{
 					int id;
@@ -188,8 +186,6 @@ void ReadFile(string filename, int &n, double **&cost, double *&X, double *&Y) {
 		{
 			if(DisplayDataType != "TWOD_COORDS") continue;
 
-			X.resize(n);
-			Y.resize(n);
 			for(int i = 0; i < n; i++)
 			{
 				int id;
