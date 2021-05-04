@@ -1,13 +1,18 @@
 #include <bits/stdc++.h>
-#include <cuda.h>
 using namespace std;
 
-void allocateManagedMemory(int n, double **cost, double *X, double *Y) {
-    
+void allocateMemory(int &n, double **&cost, double *&X, double *&Y) {
+    cost = (double **) malloc(sizeof(double*)*n);
+    for(int i = 0; i < n; i++) {
+        cost[i] = (double *) malloc(sizeof(double)*n);
+    }
+    X = (double *) malloc(sizeof(double)*n);
+    Y = (double *) malloc(sizeof(double)*n);
+    return;
 }
  
 
-void ReadFile(string filename, int n, double **cost, double *X, double *Y) {
+void ReadFile(string filename, int &n, double **&cost, double *&X, double *&Y) {
     ifstream file;
 	file.open(filename.c_str());
     string name, type, EdgeWeightType, EdgeWeightFormat, EdgeDataType, NodeCoordType, DisplayDataType;
@@ -37,7 +42,7 @@ void ReadFile(string filename, int n, double **cost, double *X, double *Y) {
 			stream >> type;
 		else if(keyword == "DIMENSION") {    
             stream >> n;
-            allocateManagedMemory(n, cost, X, Y);
+            allocateMemory(n, cost, X, Y);
         }
 		else if(keyword == "EDGE_WEIGHT_TYPE")
 			stream >> EdgeWeightType;
