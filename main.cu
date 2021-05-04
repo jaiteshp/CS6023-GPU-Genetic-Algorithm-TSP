@@ -15,7 +15,7 @@ using std::chrono::system_clock;
 // #define DBL_MAX 1.7976931348623158e+307
 
 const int POP_SIZE = 4;
-const int NUM_GEN = 2;
+const int NUM_GEN = 10;
 const float MUTATION_RATE = 0.05;
 int NUM_MUTATIONS;
 int m = POP_SIZE;
@@ -94,7 +94,8 @@ __device__ double computeFitness(int n, int **pop1, int row, double **cost) {
     for(int i = 1; i < n; i++) {
         int u = pop1[row][i-1];
         int v = pop1[row][i];
-        pathLength += cost[u][v];
+        // printf("%d %d\n", u, v);
+        pathLength = pathLength + cost[u][v];
     }
     pathLength += cost[pop1[row][n-1]][pop1[row][0]];
     return pathLength;
@@ -102,8 +103,10 @@ __device__ double computeFitness(int n, int **pop1, int row, double **cost) {
 
 __device__ int argMaxFitness(int n, int **pop1, int low, int high, double **cost) {
     int idx = 0;
-    double mn = DBL_MAX;
-    for(int row = low; row <= high; row++) {
+    double mn = 1.7976931348623158e10;
+    // printf("hi 106, %d %d\n", low, high);
+    // return idx;
+    for(int row = low; row < high; row++) {
         double fitness = computeFitness(n, pop1, row, cost);
         if(fitness < mn) {
             mn = fitness;
@@ -158,8 +161,8 @@ __global__ void processKernel(int n, int POP_SIZE, int NUM_MUTATIONS, int **pop1
     
     int parent1, parent2, low1, high1, low2, high2, a, b;
     int offset = id*(6+2*(NUM_MUTATIONS));
-    for(int i = 0; i < 6; i++) 
-        rndm[offset+i] = n*rndm[offset+i];
+    for(int i = 0; i < 4; i++) 
+        rndm[offset+i] = POP_SIZE*rndm[offset+i];
     low1 = rndm[offset+0];
     high1 = rndm[offset+1];
     low2 = rndm[offset+2];
@@ -172,8 +175,8 @@ __global__ void processKernel(int n, int POP_SIZE, int NUM_MUTATIONS, int **pop1
     return;
     parent2 = argMaxFitness(n, pop1, low2, high2, cost);
 
-    a = rndm[offset+4];
-    b = rndm[offset+5];
+    a = n*rndm[offset+4];
+    b = n*rndm[offset+5];
     adjustRangeOrder(a, b);
 
     for(int i = 0; i < n; i++) 
@@ -202,13 +205,19 @@ __global__ void processKernel(int n, int POP_SIZE, int NUM_MUTATIONS, int **pop1
 
 void generateRandomNumbers() {
     curandGenerator_t gen;    
+    dbg;
     curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);      
+    dbg;
     auto millisec_since_epoch = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    dbg;
     curandSetPseudoRandomGeneratorSeed(gen, (unsigned int) millisec_since_epoch);  
+    dbg;
     cout << "Time " << millisec_since_epoch << endl;
-    curandGenerateUniform(gen, rndm, RNDM_NUM_COUNT);    
+    curandGenerateUniform(gen, rndm, RNDM_NUM_COUNT);  
+    dbg;  
     curandDestroyGenerator(gen);    
-    cudaDeviceSynchronize();    
+    cudaDeviceSynchronize();  
+    dbg;  
 }
 
 void runGA() {
@@ -253,4 +262,5 @@ int main(int argc, char **argv) {
     dbg;
     runGA();
     dbg;
+    // for(int i = 0; i < 1000; i++) generateRandomNumbers();
 }
