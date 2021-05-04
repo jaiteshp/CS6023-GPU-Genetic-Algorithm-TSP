@@ -11,13 +11,13 @@ using std::chrono::milliseconds;
 using std::chrono::seconds;
 using std::chrono::system_clock;
 
-#define dbg cout << __FILE__ << ":" << __LINE__ << ", " << endl
+#define dbg //cout << __FILE__ << ":" << __LINE__ << ", " << endl
 // #define DBL_MAX 1.7976931348623158e+307
 
-const int POP_SIZE = 1000;
+const int POP_SIZE = 7000;
 const int NUM_GEN = 3000;
-const float MUTATION_RATE = 0.05;
-int NUM_MUTATIONS;
+const float MUTATION_RATE = 0.001;
+int NUM_MUTATIONS = 1;
 int m = POP_SIZE;
 int n;
 double **d_cost1, **d_cost2;
@@ -224,7 +224,8 @@ __global__ void processKernel(int n, int POP_SIZE, int NUM_MUTATIONS, int **pop1
 
 
     mutateOffspring(id, n, NUM_MUTATIONS, pop2, rndm);
-    printf("%d success %lf\n", id, computeFitness(n, pop2, id, cost));
+    if(id < 2) 
+        printf("%d success %lf\n", id, computeFitness(n, pop2, id, cost));
     return;    
 }
 
@@ -316,7 +317,8 @@ int main(int argc, char **argv) {
     cout << filename << endl;
     ReadFile(filename, n, cost, X, Y);
 
-    NUM_MUTATIONS = n*MUTATION_RATE;
+    // NUM_MUTATIONS = n*MUTATION_RATE;
+    // NUM_MUTATIONS = 1;
     RNDM_NUM_COUNT = POP_SIZE*(6 + 2*NUM_MUTATIONS);
 
     transposeCosts();
