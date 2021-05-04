@@ -5,8 +5,8 @@
 using namespace std;
 #define dbg cout << __FILE__ << ":" << __LINE__ << ", " << endl
 
-const int POP_SIZE = 1;
-const int NUM_GEN = 100;
+const int POP_SIZE = 100;
+const int NUM_GEN = 1;
 int m = POP_SIZE;
 int n;
 double **cost, **d_cost;
@@ -36,11 +36,11 @@ void allocateCudaMemory() {
 }
 
 void makeInitialPopulation() {
-    cudaMallocManaged(&initialPopulation, sizeof(int*)*POP_SIZE);
     int **cpop1, **cpop2, **cofsp;
     cpop1 = new int*[POP_SIZE];
     cpop2 = new int*[POP_SIZE];
     cofsp = new int*[POP_SIZE];
+    cudaMallocManaged(&initialPopulation, sizeof(int*)*POP_SIZE);
     cudaMalloc(&pop1, sizeof(int*)*POP_SIZE);
     cudaMalloc(&pop2, sizeof(int*)*POP_SIZE);
     cudaMalloc(&ofsp, sizeof(int*)*POP_SIZE);
@@ -52,6 +52,7 @@ void makeInitialPopulation() {
         random_shuffle(defaultArr, defaultArr+n);
         for(int j = 0; j < n; j++) initialPopulation[i][j] = defaultArr[j];
     }
+    // cudaMemcpy(initialPopulation, cinitialPopulation, sizeof(int*)*POP_SIZE, cudaMemcpyHostToDevice);
     cudaMemcpy(pop1, cpop1, sizeof(int*)*POP_SIZE, cudaMemcpyHostToDevice);
     cudaMemcpy(pop2, cpop2, sizeof(int*)*POP_SIZE, cudaMemcpyHostToDevice);
     cudaMemcpy(ofsp, cofsp, sizeof(int*)*POP_SIZE, cudaMemcpyHostToDevice);
@@ -66,8 +67,12 @@ void makeInitialPopulation() {
 
 __global__ void copyKernel(int n, int POP_SIZE, int **pop1, int **pop2) {
     int id = (blockIdx.x*blockDim.x)+threadIdx.x;
-    if(id > POP_SIZE) return;
-    for(int i = 0; i < n; i++) pop1[id][i] = pop2[id][i];
+    if(id >= POP_SIZE) 
+        return;
+    
+    for(int i = 0; i < n; i++) 
+        pop1[id][i] = pop2[id][i];
+
     return;
 }
 
@@ -96,5 +101,5 @@ int main(int argc, char **argv) {
     
     makeInitialPopulation();
 
-    // runGA();
+    runGA();
 }
