@@ -5,7 +5,7 @@
 using namespace std;
 #define dbg cout << __FILE__ << ":" << __LINE__ << ", " << endl
 
-const int POP_SIZE = 100;
+const int POP_SIZE = 1;
 const int NUM_GEN = 100;
 int m = POP_SIZE;
 int n;
@@ -38,6 +38,10 @@ void allocateCudaMemory() {
 void makeInitialPopulation() {
     dbg;
     cudaMallocManaged(&initialPopulation, sizeof(int*)*POP_SIZE);
+    int **cpop1, **cpop2, **cofsp;
+    cpop1 = new int*[POP_SIZE];
+    cpop2 = new int*[POP_SIZE];
+    cofsp = new int*[POP_SIZE];
     cudaMalloc(&pop1, sizeof(int*)*POP_SIZE);
     cudaMalloc(&pop2, sizeof(int*)*POP_SIZE);
     cudaMalloc(&ofsp, sizeof(int*)*POP_SIZE);
@@ -45,13 +49,17 @@ void makeInitialPopulation() {
     for(int i = 0; i < POP_SIZE; i++) {
         cudaMallocManaged(&initialPopulation[i], sizeof(int)*n);
         dbg;
-        // cudaMalloc(&pop1[i], sizeof(int)*n);
-        // cudaMalloc(&pop2[i], sizeof(int)*n);
-        // cudaMalloc(&ofsp[i], sizeof(int)*n);
+        cudaMalloc(&cpop1[i], sizeof(int)*n);
+        cudaMalloc(&cpop2[i], sizeof(int)*n);
+        cudaMalloc(&cofsp[i], sizeof(int)*n);
         dbg;
         random_shuffle(defaultArr, defaultArr+n);
         for(int j = 0; j < n; j++) initialPopulation[i][j] = defaultArr[j];
     }
+    dbg;
+    cudaMemcpy(pop1, cpop1, sizeof(int*)*POP_SIZE, cudaMemcpyHostToDevice);
+    cudaMemcpy(pop2, cpop2, sizeof(int*)*POP_SIZE, cudaMemcpyHostToDevice);
+    cudaMemcpy(ofsp, cofsp, sizeof(int*)*POP_SIZE, cudaMemcpyHostToDevice);
     dbg;
     for(int i = 0; i < POP_SIZE; i++) {
         for(int j = 0; j < n; j++) {
