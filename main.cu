@@ -76,6 +76,11 @@ __global__ void copyKernel(int n, int POP_SIZE, int **pop1, int **pop2) {
     return;
 }
 
+__global__ void processKernel(int n, int POP_SIZE, int **pop1, int **pop2) {
+    
+    return;
+}
+
 void runGA() {
     for(int genNum = 0; genNum < NUM_GEN; genNum++) {
         if(genNum == 0) 
