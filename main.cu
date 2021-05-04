@@ -120,7 +120,7 @@ int main(int argc, char **argv) {
     ReadFile(filename, n, cost, X, Y);
 
     NUM_MUTATIONS = n*MUTATION_RATE;
-    RNDM_NUM_COUNT = POP_SIZE*(4 + 2*NUM_MUTATIONS);
+    RNDM_NUM_COUNT = POP_SIZE*(6 + 2*NUM_MUTATIONS);
 
     allocateCudaMemory();
 
