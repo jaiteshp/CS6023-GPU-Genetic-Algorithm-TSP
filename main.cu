@@ -6,10 +6,10 @@
 
 using namespace std;
 #define dbg cout << __FILE__ << ":" << __LINE__ << ", " << endl
-#define DBL_MAX 1.7976931348623158e+307
+// #define DBL_MAX 1.7976931348623158e+307
 
 const int POP_SIZE = 100;
-const int NUM_GEN = 1;
+const int NUM_GEN = 10;
 const float MUTATION_RATE = 0.05;
 int NUM_MUTATIONS;
 int m = POP_SIZE;
@@ -90,7 +90,7 @@ __device__ double computeFitness(int n, int **pop1, int row, double **cost) {
         int v = pop1[row][i];
         pathLength += cost[u][v];
     }
-    pathLength += cost[pop1[row][n-1]][pop1[row][0]]
+    pathLength += cost[pop1[row][n-1]][pop1[row][0]];
     return pathLength;
 }
 
@@ -191,7 +191,7 @@ void runGA() {
 
         generateRandomNumbers();
 
-        processKernel<<<ceil(POP_SIZE/(float) 1024), 1024>>>(n, POP_SIZE, NUM_MUTATIONS, pop1, pop2, d_cost, d_X, d_Y, rndm);
+        processKernel<<<ceil(POP_SIZE/(float) 1024), 1024>>>(n, POP_SIZE, NUM_MUTATIONS, pop1, pop2, ofsp, d_cost, d_X, d_Y, rndm);
         cudaDeviceSynchronize();
     }
     return;
