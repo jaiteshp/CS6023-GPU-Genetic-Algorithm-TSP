@@ -6,11 +6,14 @@ using namespace std;
 #define dbg cout << __FILE__ << ":" << __LINE__ << ", " << endl
 
 const int POP_SIZE = 100;
+const int NUM_GEN = 100;
+int m = POP_SIZE;
 int n;
 double **cost, **d_cost;
 double *X, *Y, *d_X, *d_Y;
 int *defaultArr;
 int **initialPopulation;
+int **pop1, **pop2, **ofsp;
 
 
 void allocateCudaMemory() {
@@ -33,19 +36,49 @@ void allocateCudaMemory() {
 }
 
 void makeInitialPopulation() {
+    dbg;
     cudaMallocManaged(&initialPopulation, sizeof(int*)*POP_SIZE);
+    cudaMalloc(&pop1, sizeof(int*)*POP_SIZE);
+    cudaMalloc(&pop2, sizeof(int*)*POP_SIZE);
+    cudaMalloc(&ofsp, sizeof(int*)*POP_SIZE);
+    dbg;
     for(int i = 0; i < POP_SIZE; i++) {
         cudaMallocManaged(&initialPopulation[i], sizeof(int)*n);
+        dbg;
+        // cudaMalloc(&pop1[i], sizeof(int)*n);
+        // cudaMalloc(&pop2[i], sizeof(int)*n);
+        // cudaMalloc(&ofsp[i], sizeof(int)*n);
+        dbg;
         random_shuffle(defaultArr, defaultArr+n);
         for(int j = 0; j < n; j++) initialPopulation[i][j] = defaultArr[j];
     }
+    dbg;
     for(int i = 0; i < POP_SIZE; i++) {
         for(int j = 0; j < n; j++) {
             cout << initialPopulation[i][j] << ",";
         }
         cout << endl;
     }
+    dbg;
     return;    
+}
+
+__global__ void copyKernel(int n, int POP_SIZE, int **pop1, int **pop2) {
+    int id = (blockIdx.x*blockDim.x)+threadIdx.x;
+    if(id > POP_SIZE) return;
+    for(int i = 0; i < n; i++) pop1[id][i] = pop2[id][i];
+    return;
+}
+
+void runGA() {
+    for(int genNum = 0; genNum < NUM_GEN; genNum++) {
+        if(genNum == 0) 
+            copyKernel<<<ceil(POP_SIZE/(float) 1024), 1024>>>(n, POP_SIZE, pop1, initialPopulation);        
+        else 
+            copyKernel<<<ceil(POP_SIZE/(float) 1024), 1024>>>(n, POP_SIZE, pop1, pop2);
+        cudaDeviceSynchronize();
+    }
+    return;
 }
 
 int main(int argc, char **argv) {
@@ -62,5 +95,5 @@ int main(int argc, char **argv) {
     
     makeInitialPopulation();
 
-    
+    // runGA();
 }
