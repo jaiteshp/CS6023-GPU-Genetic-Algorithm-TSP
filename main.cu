@@ -14,8 +14,8 @@ using std::chrono::system_clock;
 #define dbg cout << __FILE__ << ":" << __LINE__ << ", " << endl
 // #define DBL_MAX 1.7976931348623158e+307
 
-const int POP_SIZE = 100;
-const int NUM_GEN = 100;
+const int POP_SIZE = 1000;
+const int NUM_GEN = 3000;
 const float MUTATION_RATE = 0.05;
 int NUM_MUTATIONS;
 int m = POP_SIZE;
@@ -192,12 +192,12 @@ __global__ void processKernel(int n, int POP_SIZE, int NUM_MUTATIONS, int **pop1
         }
     }
 
-    printf("%d success %d %d %d %d\n", id, low1, high1, parent1, n);
-    return;
+    
     /////////////////////////////////////
 
     parent1 = argMaxFitness(n, pop1, low1, high1, cost);
     parent2 = argMaxFitness(n, pop1, low2, high2, cost);
+    
 
     a = n*rndm[offset+4];
     b = n*rndm[offset+5];
@@ -222,8 +222,9 @@ __global__ void processKernel(int n, int POP_SIZE, int NUM_MUTATIONS, int **pop1
         }
     }
 
+
     mutateOffspring(id, n, NUM_MUTATIONS, pop2, rndm);
-    printf("%d success\n", id);
+    printf("%d success %lf\n", id, computeFitness(n, pop2, id, cost));
     return;    
 }
 
