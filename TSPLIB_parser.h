@@ -1,5 +1,6 @@
 #include <bits/stdc++.h>
 using namespace std;
+#define dbg //cout << __FILE__ << ":" << __LINE__ << ", " << endl
 
 void allocateMemory(int &n, double **&cost, double *&X, double *&Y) {
     cost = (double **) malloc(sizeof(double*)*n);
@@ -14,11 +15,14 @@ void allocateMemory(int &n, double **&cost, double *&X, double *&Y) {
 
 void ReadFile(string filename, int &n, double **&cost, double *&X, double *&Y) {
     ifstream file;
+    dbg;
 	file.open(filename.c_str());
+    dbg;
     string name, type, EdgeWeightType, EdgeWeightFormat, EdgeDataType, NodeCoordType, DisplayDataType;
-
+    dbg;
 	if(!file.is_open())
 		throw "Error: could not open instance file";
+    dbg;
 
 	while(!file.eof())
 	{
