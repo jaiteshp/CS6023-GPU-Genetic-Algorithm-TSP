@@ -5,11 +5,17 @@
 #include <ctime>
 
 using namespace std;
+using std::cout; using std::endl;
+using std::chrono::duration_cast;
+using std::chrono::milliseconds;
+using std::chrono::seconds;
+using std::chrono::system_clock;
+
 #define dbg cout << __FILE__ << ":" << __LINE__ << ", " << endl
 // #define DBL_MAX 1.7976931348623158e+307
 
-const int POP_SIZE = 100;
-const int NUM_GEN = 10;
+const int POP_SIZE = 4;
+const int NUM_GEN = 2;
 const float MUTATION_RATE = 0.05;
 int NUM_MUTATIONS;
 int m = POP_SIZE;
@@ -133,10 +139,23 @@ __device__ void mutateOffspring(int id, int n, int NUM_MUTATIONS, int **pop2, fl
     return;
 }
 
+__device__ void adjustRangeOrder(int &a, int &b) {
+    if(a > b) {
+        int temp = a;
+        a = b;
+        b = temp;
+    } else if(a == b) {
+        if(a == 0) b++;
+        else a--;
+    }
+    return ;
+}
+
 __global__ void processKernel(int n, int POP_SIZE, int NUM_MUTATIONS, int **pop1, int **pop2, int **pres, double **cost, double *X, double *Y, float *rndm) {
     int id = (blockIdx.x*blockDim.x)+threadIdx.x;
     if(id >= POP_SIZE) 
         return;
+    
     int parent1, parent2, low1, high1, low2, high2, a, b;
     int offset = id*(6+2*(NUM_MUTATIONS));
     for(int i = 0; i < 6; i++) 
@@ -145,19 +164,28 @@ __global__ void processKernel(int n, int POP_SIZE, int NUM_MUTATIONS, int **pop1
     high1 = rndm[offset+1];
     low2 = rndm[offset+2];
     high2 = rndm[offset+3];
+    adjustRangeOrder(low1, high1);
+    adjustRangeOrder(low2, high2);
 
     parent1 = argMaxFitness(n, pop1, low1, high1, cost);
+    printf("%d success %d %d %d %d\n", id, low1, high1, parent1, n);
+    return;
     parent2 = argMaxFitness(n, pop1, low2, high2, cost);
 
     a = rndm[offset+4];
     b = rndm[offset+5];
+    adjustRangeOrder(a, b);
 
     for(int i = 0; i < n; i++) 
         pres[id][i] = 0;
+
+   
     for(int i = a; i <= b; i++) {
         pop2[id][i] = pop1[parent1][i];
         pres[id][pop1[parent1][i]] = 1;
     }
+
+    
     int avlblIdx = 0;
     for(int i = 0; i < n; i++) {
         int numToInsert = pop1[parent2][i];
@@ -168,31 +196,39 @@ __global__ void processKernel(int n, int POP_SIZE, int NUM_MUTATIONS, int **pop1
     }
 
     mutateOffspring(id, n, NUM_MUTATIONS, pop2, rndm);
-
+    printf("%d success\n", id);
     return;    
 }
 
 void generateRandomNumbers() {
-    curandGenerator_t gen;
-    curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);    
-    curandSetPseudoRandomGeneratorSeed(gen, (unsigned int)time(NULL));
-    curandGenerateUniform(gen, rndm, RNDM_NUM_COUNT);
-    curandDestroyGenerator(gen);
-    cudaDeviceSynchronize();
+    curandGenerator_t gen;    
+    curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);      
+    auto millisec_since_epoch = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    curandSetPseudoRandomGeneratorSeed(gen, (unsigned int) millisec_since_epoch);  
+    cout << "Time " << millisec_since_epoch << endl;
+    curandGenerateUniform(gen, rndm, RNDM_NUM_COUNT);    
+    curandDestroyGenerator(gen);    
+    cudaDeviceSynchronize();    
 }
 
 void runGA() {
     for(int genNum = 0; genNum < NUM_GEN; genNum++) {
+        dbg;
+        cout << "#####################" << genNum << "#######################" << endl;
         if(genNum == 0) 
             copyKernel<<<ceil(POP_SIZE/(float) 1024), 1024>>>(n, POP_SIZE, pop1, initialPopulation);        
         else 
             copyKernel<<<ceil(POP_SIZE/(float) 1024), 1024>>>(n, POP_SIZE, pop1, pop2);
         cudaDeviceSynchronize();
+        dbg;
 
         generateRandomNumbers();
 
+        dbg;
         processKernel<<<ceil(POP_SIZE/(float) 1024), 1024>>>(n, POP_SIZE, NUM_MUTATIONS, pop1, pop2, ofsp, d_cost, d_X, d_Y, rndm);
         cudaDeviceSynchronize();
+        dbg;
+        dbg;
     }
     return;
 }
@@ -214,5 +250,7 @@ int main(int argc, char **argv) {
     
     makeInitialPopulation();
 
+    dbg;
     runGA();
+    dbg;
 }

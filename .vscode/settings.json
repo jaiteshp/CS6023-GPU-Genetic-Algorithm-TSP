@@ -3,7 +3,9 @@
         "*.cu": "cpp",
         "iostream": "cpp",
         "thread": "cpp",
-        "ostream": "cpp"
+        "ostream": "cpp",
+        "cmath": "cpp",
+        "chrono": "cpp"
     },
     "editor.tokenColorCustomizations": {
         "textMateRules": [
