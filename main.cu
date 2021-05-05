@@ -11,7 +11,7 @@ using std::chrono::milliseconds;
 using std::chrono::seconds;
 using std::chrono::system_clock;
 
-#define dbg //cout << __FILE__ << ":" << __LINE__ << ", " << endl
+#define dbg cout << __FILE__ << ":" << __LINE__ << ", " << endl
 // #define DBL_MAX 1.7976931348623158e+307
 
 const int POP_SIZE = 7000;
@@ -22,6 +22,7 @@ int m = POP_SIZE;
 int n;
 double **d_cost1, **d_cost2;
 double **cost, **d_cost;
+double **ccost;
 double *X, *Y, *d_X, *d_Y;
 int *defaultArr;
 int **initialPopulation;
@@ -49,11 +50,22 @@ void allocateCudaMemory() {
     return;
 }
 
+__global__ void printCostRow(int n, double *row) {
+    int id = (blockIdx.x*blockDim.x)+threadIdx.x;
+    if(id > 0)
+        return;
+    for(int i = 0; i < n; i++) {
+        printf("%lf\t", row[i]);
+    }
+    printf("\n");
+    return;
+}
+
 void makeInitialPopulation() {
     cudaMalloc(&rndm, sizeof(float)*RNDM_NUM_COUNT);
     int **cpop1, **cpop2, **cofsp;
-    double **ccost;
-    ccost = new double*[n];
+    // ccost = new double*[n];
+    ccost = (double **) malloc(sizeof(double*)*n);
     cpop1 = new int*[POP_SIZE];
     cpop2 = new int*[POP_SIZE];
     cofsp = new int*[POP_SIZE];
@@ -65,6 +77,14 @@ void makeInitialPopulation() {
     cudaMalloc(&ofsp, sizeof(int*)*POP_SIZE);
     for(int i = 0; i < n; i++) {
         cudaMalloc(&ccost[i], sizeof(double)*n);
+        if(i == 0) {
+            dbg;
+            for(int j = 0; j < n; j++) {
+                cout << cost[i][j] << "\t";
+            }
+            cout << endl;
+            dbg;
+        }
         cudaMemcpy(&ccost[i], cost[i], sizeof(double)*n, cudaMemcpyHostToDevice);
         cudaMallocManaged(&d_cost2[i], sizeof(double)*n);
     }
@@ -231,19 +251,14 @@ __global__ void processKernel(int n, int POP_SIZE, int NUM_MUTATIONS, int **pop1
 
 void generateRandomNumbers() {
     curandGenerator_t gen;    
-    dbg;
     curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);      
-    dbg;
     auto millisec_since_epoch = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-    dbg;
     curandSetPseudoRandomGeneratorSeed(gen, (unsigned int) millisec_since_epoch);  
-    dbg;
-    cout << "Time " << millisec_since_epoch << endl;
-    curandGenerateUniform(gen, rndm, RNDM_NUM_COUNT);  
-    dbg;  
+    // cout << "Time " << millisec_since_epoch << endl;
+    curandGenerateUniform(gen, rndm, RNDM_NUM_COUNT);   
     curandDestroyGenerator(gen);    
     cudaDeviceSynchronize();  
-    dbg;  
+    
 }
 
 __global__ void printCost(int n, double **cost) {
@@ -262,24 +277,29 @@ __global__ void printCost(int n, double **cost) {
     return;
 }
 
+__global__ void copyD_cost2ToD_cost1(int n, double **cost1, double **cost2) {
+    int id = (blockIdx.x*blockDim.x)+threadIdx.x;
+    if(id > 0)
+        return;
+    for(int i = 0; i < n; i++) {
+        for(int j = 0; j < n; j++) {
+            cost1[i][j] = cost2[i][j];
+        }
+    }
+    return;
+}
+
 void runGA() {
     for(int genNum = 0; genNum < NUM_GEN; genNum++) {
-        dbg;
         cout << "#####################" << genNum << "#######################" << endl;
         if(genNum == 0) 
             copyKernel<<<ceil(POP_SIZE/(float) 1024), 1024>>>(n, POP_SIZE, pop1, initialPopulation);        
         else 
             copyKernel<<<ceil(POP_SIZE/(float) 1024), 1024>>>(n, POP_SIZE, pop1, pop2);
         cudaDeviceSynchronize();
-        dbg;
-
         generateRandomNumbers();
-
-        dbg;
-        processKernel<<<ceil(POP_SIZE/(float) 1024), 1024>>>(n, POP_SIZE, NUM_MUTATIONS, pop1, pop2, ofsp, d_cost2, d_X, d_Y, rndm);
+        processKernel<<<ceil(POP_SIZE/(float) 1024), 1024>>>(n, POP_SIZE, NUM_MUTATIONS, pop1, pop2, ofsp, d_cost1, d_X, d_Y, rndm);
         cudaDeviceSynchronize();
-        dbg;
-        dbg;
     }
     return;
 }
@@ -331,17 +351,21 @@ int main(int argc, char **argv) {
     
     makeInitialPopulation();
     copyCostsTod_cost2();
+    copyD_cost2ToD_cost1<<<1,1>>>(n, d_cost1, d_cost2);
 
     dbg;
     runGA();
     dbg;
     // for(int i = 0; i < 1000; i++) generateRandomNumbers();
-    // copyCostsTod_cost2();
+
     // dbg;
-    // printCost<<<1,1>>>(n, d_cost2);
+    // printCost<<<1,1>>>(n, d_cost1);
     // cudaDeviceSynchronize();
     // dbg;
     // printCPUCost();
+    // dbg;
+    // printCostRow<<<1,1>>>(n, ccost[0]);
+    // cudaDeviceSynchronize();
     // dbg;
     return 0;
 }
