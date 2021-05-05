@@ -14,10 +14,10 @@ using std::chrono::system_clock;
 #define dbg cout << __FILE__ << ":" << __LINE__ << ", " << endl
 // #define DBL_MAX 1.7976931348623158e+307
 
-const int POP_SIZE = 7000;
+const int POP_SIZE = 40000;
 const int NUM_GEN = 3000;
 const float MUTATION_RATE = 0.001;
-int NUM_MUTATIONS = 1;
+int NUM_MUTATIONS = 50;
 int m = POP_SIZE;
 int n;
 double **d_cost1, **d_cost2;
@@ -161,9 +161,10 @@ __device__ int getAvlblIdx(int &idx, int n, int a, int b) {
     return res;
 }
 
-__device__ void mutateOffspring(int id, int n, int NUM_MUTATIONS, int **pop2, float *rndm) {
+__device__ void mutateOffspring(int id, int n, int NUM_MUTATIONS, int **pop2, float *rndm, double **cost) {
     int offset = id*(6+2*(NUM_MUTATIONS))+6;
     for(int mut = 0; mut < NUM_MUTATIONS; mut++) {
+        double oldfitness = computeFitness(n, pop2, id, cost);
         int a, b;
         a = n*rndm[offset++];
         b = n*rndm[offset++];
@@ -171,6 +172,14 @@ __device__ void mutateOffspring(int id, int n, int NUM_MUTATIONS, int **pop2, fl
         int temp = pop2[id][a];
         pop2[id][a] = pop2[id][b];
         pop2[id][b] = temp;
+
+        double newFitness = computeFitness(n, pop2, id, cost);
+
+        if(newFitness > oldfitness) {
+            int temp = pop2[id][a];
+            pop2[id][a] = pop2[id][b];
+            pop2[id][b] = temp;
+        }
     }
     return;
 }
@@ -243,8 +252,9 @@ __global__ void processKernel(int n, int POP_SIZE, int NUM_MUTATIONS, int **pop1
     }
 
 
-    mutateOffspring(id, n, NUM_MUTATIONS, pop2, rndm);
-    if(id < 2) 
+    mutateOffspring(id, n, NUM_MUTATIONS, pop2, rndm, cost);
+
+    if(id % 10 == 0 && id < 100) 
         printf("%d success %lf\n", id, computeFitness(n, pop2, id, cost));
     return;    
 }
