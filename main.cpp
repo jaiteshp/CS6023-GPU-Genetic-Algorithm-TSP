@@ -293,7 +293,6 @@ int main(int argc, char **argv) {
     makeInitialPopulation();
 
     initializeBestSolution();
-    cout << bestSolution << endl;
 
     auto startTimeGA = chrono::high_resolution_clock::now();
     runGA();
