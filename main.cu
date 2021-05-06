@@ -217,16 +217,6 @@ __global__ void processKernel(int n, int POP_SIZE, int NUM_MUTATIONS, int **pop1
     adjustRangeOrder(low1, high1);
     adjustRangeOrder(low2, high2);
 
-    //////////////////////////////////
-    for(int i = 0; i < n; i++) {
-        for(int j = 0; j < n; j++) {
-            double temp = cost[i][j];
-            temp = temp+1.0;
-            cost[i][j] = temp-1.0;
-        }
-    }
-    /////////////////////////////////////
-
     parent1 = argMaxFitness(n, pop1, low1, high1, cost);
     parent2 = argMaxFitness(n, pop1, low2, high2, cost);
     
