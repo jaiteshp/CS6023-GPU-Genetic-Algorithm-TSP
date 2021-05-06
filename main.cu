@@ -84,7 +84,6 @@ void makeInitialPopulation() {
         cudaMalloc(&cpop1[i], sizeof(int)*n);
         cudaMalloc(&cpop2[i], sizeof(int)*n);
         cudaMalloc(&cofsp[i], sizeof(int)*n);
-        random_shuffle(defaultArr, defaultArr+n);
         for(int j = 0; j < n; j++) initialPopulation[i][j] = defaultArr[j];
     }
     cudaMemcpy(d_cost1, ccost, sizeof(double*)*n, cudaMemcpyHostToDevice);
@@ -100,10 +99,7 @@ void initializeBestSolution() {
         int a = defaultArr[i-1];
         int b = defaultArr[i];
         *(bestSolution) += cost[a][b];
-        cout << a << " ";
-        // cout << cost[a][b] << " ";
     }
-    cout << endl;
     *(bestSolution) += cost[defaultArr[n-1]][defaultArr[0]];
     return;
 }
@@ -420,7 +416,7 @@ int main(int argc, char **argv) {
     cout << *(bestSolution) << endl;
 
     auto startTimeGA = chrono::high_resolution_clock::now();
-    // runGA();
+    runGA();
     auto endTimeGA = chrono::high_resolution_clock::now();
     double timeTakenGA = chrono::duration_cast<chrono::nanoseconds>(endTimeGA-startTimeGA).count();
     timeTakenGA = timeTakenGA*(1e-9);
