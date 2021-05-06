@@ -5,19 +5,16 @@
 #include <ctime>
 
 using namespace std;
-using std::cout; using std::endl;
 using std::chrono::duration_cast;
 using std::chrono::milliseconds;
 using std::chrono::seconds;
 using std::chrono::system_clock;
 
 #define dbg cout << __FILE__ << ":" << __LINE__ << ", " << endl
-// #define DBL_MAX 1.7976931348623158e+307
 
 const int POP_SIZE = 40000;
 const int NUM_GEN = 40;
 int NUM_MUTATIONS = 50;
-int m = POP_SIZE;
 int n;
 double **d_cost1, **d_cost2;
 double **cost, **d_cost;
@@ -25,7 +22,7 @@ double **ccost;
 double *X, *Y, *d_X, *d_Y;
 int *defaultArr;
 int **initialPopulation;
-int **pop1, **pop2, **ofsp;
+int **pop1, **pop2, **pres;
 float *rndm;
 int RNDM_NUM_COUNT;
 bool *shouldStop;
@@ -76,7 +73,7 @@ void makeInitialPopulation() {
     cudaMalloc(&d_cost1, sizeof(double*)*n);
     cudaMalloc(&pop1, sizeof(int*)*POP_SIZE);
     cudaMalloc(&pop2, sizeof(int*)*POP_SIZE);
-    cudaMalloc(&ofsp, sizeof(int*)*POP_SIZE);
+    cudaMalloc(&pres, sizeof(int*)*POP_SIZE);
     for(int i = 0; i < n; i++) {
         cudaMalloc(&ccost[i], sizeof(double)*n);
         cudaMemcpy(&ccost[i], cost[i], sizeof(double)*n, cudaMemcpyHostToDevice);
@@ -93,7 +90,7 @@ void makeInitialPopulation() {
     cudaMemcpy(d_cost1, ccost, sizeof(double*)*n, cudaMemcpyHostToDevice);
     cudaMemcpy(pop1, cpop1, sizeof(int*)*POP_SIZE, cudaMemcpyHostToDevice);
     cudaMemcpy(pop2, cpop2, sizeof(int*)*POP_SIZE, cudaMemcpyHostToDevice);
-    cudaMemcpy(ofsp, cofsp, sizeof(int*)*POP_SIZE, cudaMemcpyHostToDevice);
+    cudaMemcpy(pres, cofsp, sizeof(int*)*POP_SIZE, cudaMemcpyHostToDevice);
     return;    
 }
 
@@ -379,6 +376,7 @@ void printHyperParmeters() {
     cout << "Population size: \t" << POP_SIZE << endl;
     cout << "Number of mutations: \t" << NUM_MUTATIONS << endl;
     cout << "Max no of generations: \t" << NUM_GEN << endl;
+    return;
 }
 
 int main(int argc, char **argv) {
