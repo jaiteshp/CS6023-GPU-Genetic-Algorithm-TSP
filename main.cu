@@ -16,7 +16,6 @@ using std::chrono::system_clock;
 
 const int POP_SIZE = 40000;
 const int NUM_GEN = 40;
-const float MUTATION_RATE = 0.001;
 int NUM_MUTATIONS = 50;
 int m = POP_SIZE;
 int n;
@@ -68,7 +67,6 @@ __global__ void printCostRow(int n, double *row) {
 void makeInitialPopulation() {
     cudaMalloc(&rndm, sizeof(float)*RNDM_NUM_COUNT);
     int **cpop1, **cpop2, **cofsp;
-    // ccost = new double*[n];
     ccost = (double **) malloc(sizeof(double*)*n);
     cpop1 = new int*[POP_SIZE];
     cpop2 = new int*[POP_SIZE];
@@ -81,14 +79,6 @@ void makeInitialPopulation() {
     cudaMalloc(&ofsp, sizeof(int*)*POP_SIZE);
     for(int i = 0; i < n; i++) {
         cudaMalloc(&ccost[i], sizeof(double)*n);
-        if(i == 0) {
-            dbg;
-            for(int j = 0; j < n; j++) {
-                cout << cost[i][j] << "\t";
-            }
-            cout << endl;
-            dbg;
-        }
         cudaMemcpy(&ccost[i], cost[i], sizeof(double)*n, cudaMemcpyHostToDevice);
         cudaMallocManaged(&d_cost2[i], sizeof(double)*n);
     }
@@ -100,17 +90,10 @@ void makeInitialPopulation() {
         random_shuffle(defaultArr, defaultArr+n);
         for(int j = 0; j < n; j++) initialPopulation[i][j] = defaultArr[j];
     }
-    // cudaMemcpy(initialPopulation, cinitialPopulation, sizeof(int*)*POP_SIZE, cudaMemcpyHostToDevice);
     cudaMemcpy(d_cost1, ccost, sizeof(double*)*n, cudaMemcpyHostToDevice);
     cudaMemcpy(pop1, cpop1, sizeof(int*)*POP_SIZE, cudaMemcpyHostToDevice);
     cudaMemcpy(pop2, cpop2, sizeof(int*)*POP_SIZE, cudaMemcpyHostToDevice);
     cudaMemcpy(ofsp, cofsp, sizeof(int*)*POP_SIZE, cudaMemcpyHostToDevice);
-    // for(int i = 0; i < POP_SIZE; i++) {
-    //     for(int j = 0; j < n; j++) {
-    //         cout << initialPopulation[i][j] << ",";
-    //     }
-    //     cout << endl;
-    // }
     return;    
 }
 
@@ -141,8 +124,6 @@ __device__ double computeFitness(int n, int **pop1, int row, double **cost) {
     for(int i = 1; i < n; i++) {
         int u = pop1[row][i-1];
         int v = pop1[row][i];
-        if(u < 0 || u >= n || v < 0 || v >= n) return pathLength;
-        // printf("%d %d\n", u, v);
         pathLength = pathLength + cost[u][v];
     }
     pathLength += cost[pop1[row][n-1]][pop1[row][0]];
@@ -152,8 +133,6 @@ __device__ double computeFitness(int n, int **pop1, int row, double **cost) {
 __device__ int argMaxFitness(int n, int **pop1, int low, int high, double **cost) {
     int idx = 0;
     double mn = 1.7976931348623158e+40;
-    // printf("hi 106, %d %d\n", low, high);
-    // return idx;
     for(int row = low; row < high; row++) {
         double fitness = computeFitness(n, pop1, row, cost);
         if(fitness < mn) {
@@ -215,7 +194,7 @@ __device__ bool hasConverged(int n, int POP_SIZE, int **pop2, double **cost) {
     double fitness = computeFitness(n, pop2, 0, cost);
     for(int i = 1; i < POP_SIZE; i++) {
         if((long) fitness != (long) computeFitness(n, pop2, i, cost)) {
-            printf("218, failed at %d, %d, %d\n", i, (int) fitness, (int) computeFitness(n, pop2, i, cost));
+            // printf("218, failed at %d, %ld, %ld\n", i, (long) fitness, (long) computeFitness(n, pop2, i, cost));
             return false;
         }
     }
@@ -278,10 +257,8 @@ __global__ void processKernel(int n, int POP_SIZE, int NUM_MUTATIONS, int **pop1
 
     mutateOffspring(id, n, NUM_MUTATIONS, pop2, rndm, cost);
 
-    if(id % 10 == 0 && id < 100) 
-        printf("%d success %lf\n", id, computeFitness(n, pop2, id, cost));
-    if(id == 0) 
-        printf("271, hi\n");
+    // if(id % 100 == 0 && id < 1000) 
+    //     printf("%dth\t allele with solution: %lf\n", id, computeFitness(n, pop2, id, cost));
     return;    
 }
 
@@ -293,7 +270,6 @@ __device__ void updateBestSolution(int n, int POP_SIZE, int **pop2, double **cos
             *(bestSolution) = currSolution;
         }
     }
-    printf("284, %lf\n", *(bestSolution));
     return;
 }
 
@@ -301,10 +277,9 @@ __global__ void terminationKernel(int n, int POP_SIZE, int **pop2, double **cost
     int id = (blockIdx.x*blockDim.x)+threadIdx.x;
     if(id > 0)
         return;
-    // return;
     *(shouldStop) = hasConverged(n, POP_SIZE, pop2, cost);
-    printf("291, %d and %lf\n", *(shouldStop), *(bestSolution));
     updateBestSolution(n, POP_SIZE, pop2, cost, bestSolution);
+    printf("Best solution: %lf\n", *(bestSolution));
     return;
 }
 
@@ -350,27 +325,27 @@ __global__ void copyD_cost2ToD_cost1(int n, double **cost1, double **cost2) {
 
 void runGA() {
     for(int genNum = 0; genNum < NUM_GEN; genNum++) {
-        cout << "#####################" << genNum << "#######################" << endl;
+        cout << "#####################  " << genNum << "  #######################" << endl;
         if(genNum == 0) 
             copyKernel<<<ceil(POP_SIZE/(float) 1024), 1024>>>(n, POP_SIZE, pop1, initialPopulation);        
         else 
             copyKernel<<<ceil(POP_SIZE/(float) 1024), 1024>>>(n, POP_SIZE, pop1, pop2);
         cudaDeviceSynchronize();
+
         generateRandomNumbers();
-        dbg;
+
         processKernel<<<ceil(POP_SIZE/(float) 1024), 1024>>>(n, POP_SIZE, NUM_MUTATIONS, pop1, pop2, ofsp, d_cost1, d_X, d_Y, rndm);
         cudaDeviceSynchronize();
-        dbg;
+
         terminationKernel<<<1, 1>>>(n, POP_SIZE, pop2, d_cost1, shouldStop, bestSolution);
         cudaDeviceSynchronize();
-        dbg;
+
         if(*(shouldStop)) {
-            cout << "GA Converged with best Solution: " << *(bestSolution) << endl;
-            break;
+            cout << "GA converged in " << genNum+1 << "th genereation " << "with best Solution: " << *(bestSolution) << endl;
+            return;
         }
-        dbg;
     }
-    cout << "best solution found is: " << *(bestSolution) << endl;
+    cout << "GA didn't converge. Best solution found is: " << *(bestSolution) << endl;
     return;
 }
 
@@ -401,42 +376,36 @@ void copyCostsTod_cost2(){
     }
 }
 
+void initializeDefaultArray() {
+    defaultArr = new int[n];
+    for(int i = 0; i < n; i++) 
+        defaultArr[i] = i;
+    return;
+}
+
 int main(int argc, char **argv) {
     string filename = "TSPLIB/";
     filename = filename + argv[1];
-    cout << filename << endl;
     ReadFile(filename, n, cost, X, Y);
 
-    // NUM_MUTATIONS = n*MUTATION_RATE;
-    // NUM_MUTATIONS = 1;
     RNDM_NUM_COUNT = POP_SIZE*(6 + 2*NUM_MUTATIONS);
 
     transposeCosts();
 
     allocateCudaMemory();
 
-    defaultArr = new int[n];
-    for(int i = 0; i < n; i++) 
-        defaultArr[i] = i;
+    initializeDefaultArray();
     
     makeInitialPopulation();
+
     copyCostsTod_cost2();
+
     copyD_cost2ToD_cost1<<<1,1>>>(n, d_cost1, d_cost2);
+    cudaDeviceSynchronize();
+
     initializeBestSolution();
 
-    dbg;
     runGA();
-    dbg;
-    // for(int i = 0; i < 1000; i++) generateRandomNumbers();
 
-    // dbg;
-    // printCost<<<1,1>>>(n, d_cost1);
-    // cudaDeviceSynchronize();
-    // dbg;
-    // printCPUCost();
-    // dbg;
-    // printCostRow<<<1,1>>>(n, ccost[0]);
-    // cudaDeviceSynchronize();
-    // dbg;
     return 0;
 }
