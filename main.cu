@@ -279,7 +279,7 @@ __global__ void terminationKernel(int n, int POP_SIZE, int **pop2, double **cost
         return;
     *(shouldStop) = hasConverged(n, POP_SIZE, pop2, cost);
     updateBestSolution(n, POP_SIZE, pop2, cost, bestSolution);
-    printf("Best solution: %lf\n", *(bestSolution));
+    printf("Solution: %lf\n", *(bestSolution));
     return;
 }
 
@@ -325,7 +325,7 @@ __global__ void copyD_cost2ToD_cost1(int n, double **cost1, double **cost2) {
 
 void runGA() {
     for(int genNum = 0; genNum < NUM_GEN; genNum++) {
-        cout << "#####################  " << genNum << "  #######################" << endl;
+        cout << "-------------- " << genNum << " --------------" << endl;
         if(genNum == 0) 
             copyKernel<<<ceil(POP_SIZE/(float) 1024), 1024>>>(n, POP_SIZE, pop1, initialPopulation);        
         else 
@@ -341,7 +341,7 @@ void runGA() {
         cudaDeviceSynchronize();
 
         if(*(shouldStop)) {
-            cout << "GA converged in " << genNum+1 << "th genereation " << "with best Solution: " << *(bestSolution) << endl;
+            cout << endl << "GA converged in " << genNum+1 << "th generation " << "with best Solution: " << *(bestSolution) << endl;
             return;
         }
     }
@@ -383,6 +383,14 @@ void initializeDefaultArray() {
     return;
 }
 
+void printHyperParmeters() {
+    cout << endl;
+    cout << "Number of cities: \t" << n << endl;
+    cout << "Population size: \t" << POP_SIZE << endl;
+    cout << "Number of mutations: \t" << NUM_MUTATIONS << endl;
+    cout << "Max no of generations: \t" << NUM_GEN << endl;
+}
+
 int main(int argc, char **argv) {
     string filename = "TSPLIB/";
     filename = filename + argv[1];
@@ -405,7 +413,15 @@ int main(int argc, char **argv) {
 
     initializeBestSolution();
 
+    auto startTimeGA = chrono::high_resolution_clock::now();
     runGA();
+    auto endTimeGA = chrono::high_resolution_clock::now();
+    double timeTakenGA = chrono::duration_cast<chrono::nanoseconds>(endTimeGA-startTimeGA).count();
+    timeTakenGA = timeTakenGA*(1e-9);
+    
+    cout << endl << "Execution time (GPU): " << timeTakenGA << " seconds" << endl;
+    
+    printHyperParmeters();
 
     return 0;
 }
