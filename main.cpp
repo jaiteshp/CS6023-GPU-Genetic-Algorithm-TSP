@@ -304,7 +304,5 @@ int main(int argc, char **argv) {
     
     printHyperParmeters();
 
-    // printCPUCost();
-
     return 0;
 }
