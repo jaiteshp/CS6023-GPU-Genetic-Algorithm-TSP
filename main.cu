@@ -14,7 +14,7 @@ using std::chrono::system_clock;
 #define dbg cout << __FILE__ << ":" << __LINE__ << ", " << endl
 // #define DBL_MAX 1.7976931348623158e+307
 
-const int POP_SIZE = 4;
+const int POP_SIZE = 40000;
 const int NUM_GEN = 40;
 const float MUTATION_RATE = 0.001;
 int NUM_MUTATIONS = 50;
@@ -213,8 +213,9 @@ __device__ void adjustRangeOrder(int &a, int &b) {
 
 __device__ bool hasConverged(int n, int POP_SIZE, int **pop2, double **cost) {
     double fitness = computeFitness(n, pop2, 0, cost);
-    for(int i = 1; i < n; i++) {
-        if(fitness != computeFitness(n, pop2, i, cost)) {
+    for(int i = 1; i < POP_SIZE; i++) {
+        if((long) fitness != (long) computeFitness(n, pop2, i, cost)) {
+            printf("218, failed at %d, %d, %d\n", i, (int) fitness, (int) computeFitness(n, pop2, i, cost));
             return false;
         }
     }
@@ -360,8 +361,8 @@ void runGA() {
         processKernel<<<ceil(POP_SIZE/(float) 1024), 1024>>>(n, POP_SIZE, NUM_MUTATIONS, pop1, pop2, ofsp, d_cost1, d_X, d_Y, rndm);
         cudaDeviceSynchronize();
         dbg;
-        // terminationKernel<<<1, 1>>>(n, POP_SIZE, pop2, d_cost1, shouldStop, bestSolution);
-        // cudaDeviceSynchronize();
+        terminationKernel<<<1, 1>>>(n, POP_SIZE, pop2, d_cost1, shouldStop, bestSolution);
+        cudaDeviceSynchronize();
         dbg;
         if(*(shouldStop)) {
             cout << "GA Converged with best Solution: " << *(bestSolution) << endl;
