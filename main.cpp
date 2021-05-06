@@ -10,9 +10,9 @@ using std::chrono::system_clock;
 
 #define dbg cout << __FILE__ << ":" << __LINE__ << ", " << endl
 
-const int POP_SIZE = 4;
-const int NUM_GEN = 10;
-int NUM_MUTATIONS = 10;
+const int POP_SIZE = 4000;
+const int NUM_GEN = 40;
+int NUM_MUTATIONS = 50;
 int n;
 double **cost;
 double *X, *Y;
@@ -89,13 +89,13 @@ void copyKernel(int n, int POP_SIZE, int **pop1, int **pop2) {
 }
 
 float getRandomFloat() {
-    auto millisec_since_epoch = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-    srand((unsigned int) millisec_since_epoch);
     float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
     return r;
 }
 
 void generateRandomNumbers() {   
+    auto millisec_since_epoch = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    srand((unsigned int) millisec_since_epoch);
     for(int i = 0; i < RNDM_NUM_COUNT; i++) {
         rndm[i] = getRandomFloat();
     }
@@ -212,6 +212,7 @@ void processKernel() {
         }
 
         mutateOffspring(id, pop2);
+        // cout << "215, " << computeFitness(pop2, id) << endl;
     }
     return;
 }

@@ -12,7 +12,7 @@ using std::chrono::system_clock;
 
 #define dbg cout << __FILE__ << ":" << __LINE__ << ", " << endl
 
-const int POP_SIZE = 40000;
+const int POP_SIZE = 4000;
 const int NUM_GEN = 40;
 int NUM_MUTATIONS = 50;
 int n;
@@ -321,7 +321,7 @@ void runGA() {
 
         generateRandomNumbers();
 
-        processKernel<<<ceil(POP_SIZE/(float) 1024), 1024>>>(n, POP_SIZE, NUM_MUTATIONS, pop1, pop2, ofsp, d_cost1, d_X, d_Y, rndm);
+        processKernel<<<ceil(POP_SIZE/(float) 1024), 1024>>>(n, POP_SIZE, NUM_MUTATIONS, pop1, pop2, pres, d_cost1, d_X, d_Y, rndm);
         cudaDeviceSynchronize();
 
         terminationKernel<<<1, 1>>>(n, POP_SIZE, pop2, d_cost1, shouldStop, bestSolution);
