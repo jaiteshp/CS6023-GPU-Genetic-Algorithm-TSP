@@ -14,8 +14,8 @@ using std::chrono::system_clock;
 #define dbg cout << __FILE__ << ":" << __LINE__ << ", " << endl
 // #define DBL_MAX 1.7976931348623158e+307
 
-const int POP_SIZE = 40000;
-const int NUM_GEN = 3000;
+const int POP_SIZE = 4;
+const int NUM_GEN = 40;
 const float MUTATION_RATE = 0.001;
 int NUM_MUTATIONS = 50;
 int m = POP_SIZE;
@@ -29,6 +29,8 @@ int **initialPopulation;
 int **pop1, **pop2, **ofsp;
 float *rndm;
 int RNDM_NUM_COUNT;
+bool *shouldStop;
+double *bestSolution;
 
 void allocateCudaMemory() {
     // double **temp = (double**) malloc(sizeof(double*)*n);
@@ -47,6 +49,8 @@ void allocateCudaMemory() {
     cudaMalloc(&d_Y, sizeof(double)*n);
     cudaMemcpy(&d_Y, Y, sizeof(double)*n, cudaMemcpyHostToDevice);
     
+    cudaMallocManaged(&shouldStop, sizeof(bool));
+    cudaMallocManaged(&bestSolution, sizeof(double));
     return;
 }
 
@@ -108,6 +112,17 @@ void makeInitialPopulation() {
     //     cout << endl;
     // }
     return;    
+}
+
+void initializeBestSolution() {
+    *(bestSolution) = 0.0;
+    for(int i = 1; i < n; i++) {
+        int a = defaultArr[i-1];
+        int b = defaultArr[i];
+        *(bestSolution) += cost[a][b];
+    }
+    *(bestSolution) += cost[defaultArr[n-1]][defaultArr[0]];
+    return;
 }
 
 __global__ void copyKernel(int n, int POP_SIZE, int **pop1, int **pop2) {
@@ -196,6 +211,16 @@ __device__ void adjustRangeOrder(int &a, int &b) {
     return ;
 }
 
+__device__ bool hasConverged(int n, int POP_SIZE, int **pop2, double **cost) {
+    double fitness = computeFitness(n, pop2, 0, cost);
+    for(int i = 1; i < n; i++) {
+        if(fitness != computeFitness(n, pop2, i, cost)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 __global__ void processKernel(int n, int POP_SIZE, int NUM_MUTATIONS, int **pop1, int **pop2, int **pres, double **cost, double *X, double *Y, float *rndm) {
     int id = (blockIdx.x*blockDim.x)+threadIdx.x;
     if(id >= POP_SIZE) 
@@ -220,8 +245,6 @@ __global__ void processKernel(int n, int POP_SIZE, int NUM_MUTATIONS, int **pop1
             cost[i][j] = temp-1.0;
         }
     }
-
-    
     /////////////////////////////////////
 
     parent1 = argMaxFitness(n, pop1, low1, high1, cost);
@@ -256,7 +279,32 @@ __global__ void processKernel(int n, int POP_SIZE, int NUM_MUTATIONS, int **pop1
 
     if(id % 10 == 0 && id < 100) 
         printf("%d success %lf\n", id, computeFitness(n, pop2, id, cost));
+    if(id == 0) 
+        printf("271, hi\n");
     return;    
+}
+
+__device__ void updateBestSolution(int n, int POP_SIZE, int **pop2, double **cost, double *bestSolution) {
+    double currSolution;
+    for(int i = 0; i < POP_SIZE; i++) {
+        currSolution = computeFitness(n, pop2, i, cost);
+        if(currSolution < *(bestSolution)) {
+            *(bestSolution) = currSolution;
+        }
+    }
+    printf("284, %lf\n", *(bestSolution));
+    return;
+}
+
+__global__ void terminationKernel(int n, int POP_SIZE, int **pop2, double **cost, bool *shouldStop, double *bestSolution) {
+    int id = (blockIdx.x*blockDim.x)+threadIdx.x;
+    if(id > 0)
+        return;
+    // return;
+    *(shouldStop) = hasConverged(n, POP_SIZE, pop2, cost);
+    printf("291, %d and %lf\n", *(shouldStop), *(bestSolution));
+    updateBestSolution(n, POP_SIZE, pop2, cost, bestSolution);
+    return;
 }
 
 void generateRandomNumbers() {
@@ -308,9 +356,20 @@ void runGA() {
             copyKernel<<<ceil(POP_SIZE/(float) 1024), 1024>>>(n, POP_SIZE, pop1, pop2);
         cudaDeviceSynchronize();
         generateRandomNumbers();
+        dbg;
         processKernel<<<ceil(POP_SIZE/(float) 1024), 1024>>>(n, POP_SIZE, NUM_MUTATIONS, pop1, pop2, ofsp, d_cost1, d_X, d_Y, rndm);
         cudaDeviceSynchronize();
+        dbg;
+        // terminationKernel<<<1, 1>>>(n, POP_SIZE, pop2, d_cost1, shouldStop, bestSolution);
+        // cudaDeviceSynchronize();
+        dbg;
+        if(*(shouldStop)) {
+            cout << "GA Converged with best Solution: " << *(bestSolution) << endl;
+            break;
+        }
+        dbg;
     }
+    cout << "best solution found is: " << *(bestSolution) << endl;
     return;
 }
 
@@ -362,6 +421,7 @@ int main(int argc, char **argv) {
     makeInitialPopulation();
     copyCostsTod_cost2();
     copyD_cost2ToD_cost1<<<1,1>>>(n, d_cost1, d_cost2);
+    initializeBestSolution();
 
     dbg;
     runGA();

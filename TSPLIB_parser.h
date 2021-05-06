@@ -1,6 +1,5 @@
 #include <bits/stdc++.h>
 using namespace std;
-#define dbg //cout << __FILE__ << ":" << __LINE__ << ", " << endl
 
 void allocateMemory(int &n, double **&cost, double *&X, double *&Y) {
     cost = (double **) malloc(sizeof(double*)*n);
