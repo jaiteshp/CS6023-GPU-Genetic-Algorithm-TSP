@@ -62,7 +62,7 @@ __global__ void printCostRow(int n, double *row) {
 }
 
 void makeInitialPopulation() {
-    cudaMalloc(&rndm, sizeof(float)*RNDM_NUM_COUNT);
+    cudaMallocManaged(&rndm, sizeof(float)*RNDM_NUM_COUNT);
     int **cpop1, **cpop2, **cofsp;
     ccost = (double **) malloc(sizeof(double*)*n);
     cpop1 = new int*[POP_SIZE];
@@ -100,7 +100,10 @@ void initializeBestSolution() {
         int a = defaultArr[i-1];
         int b = defaultArr[i];
         *(bestSolution) += cost[a][b];
+        cout << a << " ";
+        // cout << cost[a][b] << " ";
     }
+    cout << endl;
     *(bestSolution) += cost[defaultArr[n-1]][defaultArr[0]];
     return;
 }
@@ -270,6 +273,20 @@ __global__ void terminationKernel(int n, int POP_SIZE, int **pop2, double **cost
     return;
 }
 
+float getRandomFloat() {
+    float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+    return r;
+}
+
+void generateRandomNumbersCPU() {   
+    auto millisec_since_epoch = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    srand((unsigned int) millisec_since_epoch);
+    for(int i = 0; i < RNDM_NUM_COUNT; i++) {
+        rndm[i] = getRandomFloat();
+    }
+    return;
+}
+
 void generateRandomNumbers() {
     curandGenerator_t gen;    
     curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);      
@@ -319,7 +336,7 @@ void runGA() {
             copyKernel<<<ceil(POP_SIZE/(float) 1024), 1024>>>(n, POP_SIZE, pop1, pop2);
         cudaDeviceSynchronize();
 
-        generateRandomNumbers();
+        generateRandomNumbersCPU();
 
         processKernel<<<ceil(POP_SIZE/(float) 1024), 1024>>>(n, POP_SIZE, NUM_MUTATIONS, pop1, pop2, pres, d_cost1, d_X, d_Y, rndm);
         cudaDeviceSynchronize();
@@ -400,9 +417,10 @@ int main(int argc, char **argv) {
     cudaDeviceSynchronize();
 
     initializeBestSolution();
+    cout << *(bestSolution) << endl;
 
     auto startTimeGA = chrono::high_resolution_clock::now();
-    runGA();
+    // runGA();
     auto endTimeGA = chrono::high_resolution_clock::now();
     double timeTakenGA = chrono::duration_cast<chrono::nanoseconds>(endTimeGA-startTimeGA).count();
     timeTakenGA = timeTakenGA*(1e-9);
@@ -410,6 +428,8 @@ int main(int argc, char **argv) {
     cout << endl << "Execution time (GPU): " << timeTakenGA << " seconds" << endl;
     
     printHyperParmeters();
+
+    // printCPUCost();
 
     return 0;
 }
