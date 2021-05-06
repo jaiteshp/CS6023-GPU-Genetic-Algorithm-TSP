@@ -413,7 +413,6 @@ int main(int argc, char **argv) {
     cudaDeviceSynchronize();
 
     initializeBestSolution();
-    cout << *(bestSolution) << endl;
 
     auto startTimeGA = chrono::high_resolution_clock::now();
     runGA();
