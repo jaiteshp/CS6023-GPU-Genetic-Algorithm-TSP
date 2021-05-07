@@ -12,7 +12,7 @@ using std::chrono::system_clock;
 
 #define dbg cout << __FILE__ << ":" << __LINE__ << ", " << endl
 
-const int POP_SIZE = 100;
+const int POP_SIZE = 10000;
 const int NUM_GEN = 10000;
 int NUM_MUTATIONS = 50;
 int n;
