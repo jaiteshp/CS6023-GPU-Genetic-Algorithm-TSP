@@ -4,3 +4,4 @@ ga_cpu
 ga_gpu
 ga_gpu_output.txt
 ga_cpu_output.txt
+.ipynb_checkpoints/plots-checkpoint.ipynb
