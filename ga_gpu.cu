@@ -11,6 +11,7 @@ using std::chrono::seconds;
 using std::chrono::system_clock;
 
 #define dbg cout << __FILE__ << ":" << __LINE__ << ", " << endl
+#define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 
 int POP_SIZE = 10000;
 int NUM_GEN = 10000;
@@ -27,6 +28,18 @@ float *rndm;
 int RNDM_NUM_COUNT;
 bool *shouldStop;
 double *bestSolution;
+vector <float> bestSolutionV;
+string OUTPUT_FILE = "ga_gpu_output.txt";
+fstream ofs;
+
+inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
+{
+   if (code != cudaSuccess) 
+   {
+      fprintf(stderr,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
+      if (abort) exit(code);
+   }
+}
 
 void allocateCudaMemory() {
     // double **temp = (double**) malloc(sizeof(double*)*n);
@@ -323,7 +336,16 @@ __global__ void copyD_cost2ToD_cost1(int n, double **cost1, double **cost2) {
     return;
 }
 
+void writeOutput() {
+    ofs << bestSolutionV.size() << endl;
+    for(int i = 0; i < bestSolutionV.size(); i++) {
+        ofs << bestSolutionV[i] << endl;
+    }
+    ofs << *(shouldStop) << endl;
+}
+
 void runGA() {
+    bestSolutionV.clear();
     for(int genNum = 0; genNum < NUM_GEN; genNum++) {
         cout << "-------------- " << genNum << " --------------" << endl;
         if(genNum == 0) 
@@ -340,12 +362,16 @@ void runGA() {
         terminationKernel<<<1, 1>>>(n, POP_SIZE, pop2, d_cost1, shouldStop, bestSolution);
         cudaDeviceSynchronize();
 
+        bestSolutionV.push_back(*(bestSolution));
+
         if(*(shouldStop)) {
             cout << endl << "GA converged in " << genNum+1 << "th generation " << "with best Solution: " << *(bestSolution) << endl;
+            writeOutput();
             return;
         }
     }
     cout << "GA didn't converge. Best solution found is: " << *(bestSolution) << endl;
+    writeOutput();
     return;
 }
 
@@ -417,6 +443,8 @@ int main(int argc, char **argv) {
 
     takeCmndLineArgs(argc, argv);
 
+    ofs.open(OUTPUT_FILE, ios::out | ios::trunc);
+
     RNDM_NUM_COUNT = POP_SIZE*(6 + 2*NUM_MUTATIONS);
 
     transposeCosts();
@@ -441,8 +469,11 @@ int main(int argc, char **argv) {
     timeTakenGA = timeTakenGA*(1e-9);
     
     cout << endl << "Execution time (GPU): " << timeTakenGA << " seconds" << endl;
+    ofs << timeTakenGA << endl;
     
     printHyperParmeters();
+
+    ofs.close();
 
     return 0;
 }

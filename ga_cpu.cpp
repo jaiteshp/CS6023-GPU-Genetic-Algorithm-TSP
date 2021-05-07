@@ -23,6 +23,9 @@ bool shouldStop;
 double bestSolution;
 int **initialPopulation;
 float *rndm;
+vector <float> bestSolutionV;
+string OUTPUT_FILE = "ga_cpu_output.txt";
+fstream ofs;
 
 void transposeCosts() {
     for(int i = 0; i < n; i++) {
@@ -246,7 +249,16 @@ void terminationKernel() {
     return;
 }
 
+void writeOutput() {
+    ofs << bestSolutionV.size() << endl;
+    for(int i = 0; i < bestSolutionV.size(); i++) {
+        ofs << bestSolutionV[i] << endl;
+    }
+    ofs << shouldStop << endl;
+}
+
 void runGA() {
+    bestSolutionV.clear();
     for(int genNum = 0; genNum < NUM_GEN; genNum++) {
         cout << "-------------- " << genNum << " --------------" << endl;
         if(genNum == 0) 
@@ -260,12 +272,16 @@ void runGA() {
 
         terminationKernel();
 
+        bestSolutionV.push_back(bestSolution);
+
         if(shouldStop) {
             cout << endl << "GA converged in " << genNum+1 << "th generation " << "with best Solution: " << bestSolution << endl;
+            writeOutput();
             return;
         }
     }
     cout << "GA didn't converge. Best solution found is: " << bestSolution << endl;
+    writeOutput();
     return;
 }
 
@@ -304,6 +320,8 @@ int main(int argc, char **argv) {
 
     takeCmndLineArgs(argc, argv);
 
+    ofs.open(OUTPUT_FILE, ios::out | ios::trunc);
+
     RNDM_NUM_COUNT = POP_SIZE*(6 + 2*NUM_MUTATIONS);
 
     transposeCosts();
@@ -321,8 +339,11 @@ int main(int argc, char **argv) {
     timeTakenGA = timeTakenGA*(1e-9);
     
     cout << endl << "Execution time (CPU): " << timeTakenGA << " seconds" << endl;
-    
+    ofs << timeTakenGA << endl;
+
     printHyperParmeters();
+
+    ofs.close();
 
     return 0;
 }
