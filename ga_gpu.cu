@@ -12,8 +12,8 @@ using std::chrono::system_clock;
 
 #define dbg cout << __FILE__ << ":" << __LINE__ << ", " << endl
 
-const int POP_SIZE = 10000;
-const int NUM_GEN = 10000;
+int POP_SIZE = 10000;
+int NUM_GEN = 10000;
 int NUM_MUTATIONS = 50;
 int n;
 double **d_cost1, **d_cost2;
@@ -392,10 +392,30 @@ void printHyperParmeters() {
     return;
 }
 
+void takeCmndLineArgs(int argc, char **argv) {
+    int numExtraArgc = (argc - 2)/2;
+    int argIdx = 2;
+    while(numExtraArgc) {
+        char c = argv[argIdx++][0];
+        int val = atoi(argv[argIdx++]);
+        if(c == 'p') {
+            POP_SIZE = val;
+        } else if(c == 'g') {
+            NUM_GEN = val;
+        } else if(c == 'm') {
+            NUM_MUTATIONS = val;
+        }
+        numExtraArgc--;
+    }
+    return;
+}
+
 int main(int argc, char **argv) {
     string filename = "TSPLIB/";
     filename = filename + argv[1];
     ReadFile(filename, n, cost, X, Y);
+
+    takeCmndLineArgs(argc, argv);
 
     RNDM_NUM_COUNT = POP_SIZE*(6 + 2*NUM_MUTATIONS);
 
