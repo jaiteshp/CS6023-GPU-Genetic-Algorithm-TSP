@@ -16,6 +16,7 @@ using std::chrono::system_clock;
 int POP_SIZE = 10000;
 int NUM_GEN = 10000;
 int NUM_MUTATIONS = 50;
+int THREADS_PER_BLOCK = 100;
 int n;
 double **d_cost1, **d_cost2;
 double **cost, **d_cost;
@@ -164,6 +165,22 @@ __device__ int getAvlblIdx(int &idx, int n, int a, int b) {
     return res;
 }
 
+__device__ void setLeftRight(int id, int n, int **pop2, int idx, int &left, int &right) {
+    if(idx == 0) {
+        left = pop2[id][n-1];
+    }
+    else {
+        left = pop2[id][idx-1];
+    }
+    if(idx == n-1) {
+        right = pop2[id][0];
+    }
+    else {
+        right = pop2[id][idx+1];
+    }
+    return;
+}
+
 __device__ void mutateOffspring(int id, int n, int NUM_MUTATIONS, int **pop2, float *rndm, double **cost) {
     int offset = id*(6+2*(NUM_MUTATIONS))+6;
     for(int mut = 0; mut < NUM_MUTATIONS; mut++) {
@@ -172,13 +189,16 @@ __device__ void mutateOffspring(int id, int n, int NUM_MUTATIONS, int **pop2, fl
         a = n*rndm[offset++];
         b = n*rndm[offset++];
 
-        int temp = pop2[id][a];
-        pop2[id][a] = pop2[id][b];
-        pop2[id][b] = temp;
+        int l1, r1, l2, r2, num1, num2;
+        num1 = pop2[id][a];
+        num2 = pop2[id][b];
+        setLeftRight(id, n, pop2, a, l1, r1);
+        setLeftRight(id, n, pop2, b, l2, r2);
 
-        double newFitness = computeFitness(n, pop2, id, cost);
+        float currDist = cost[l1][num1]+cost[num1][r1]+cost[l2][num2]+cost[num2][r2];
+        float newDist = cost[l1][num2]+cost[num2][r1]+cost[l2][num1]+cost[num1][r2];
 
-        if(newFitness > oldfitness) {
+        if(newDist <= currDist) {
             int temp = pop2[id][a];
             pop2[id][a] = pop2[id][b];
             pop2[id][b] = temp;
@@ -349,14 +369,14 @@ void runGA() {
     for(int genNum = 0; genNum < NUM_GEN; genNum++) {
         cout << "-------------- " << genNum << " --------------" << endl;
         if(genNum == 0) 
-            copyKernel<<<ceil(POP_SIZE/(float) 1024), 1024>>>(n, POP_SIZE, pop1, initialPopulation);        
+            copyKernel<<<ceil(POP_SIZE/(float) THREADS_PER_BLOCK), THREADS_PER_BLOCK>>>(n, POP_SIZE, pop1, initialPopulation);        
         else 
-            copyKernel<<<ceil(POP_SIZE/(float) 1024), 1024>>>(n, POP_SIZE, pop1, pop2);
+            copyKernel<<<ceil(POP_SIZE/(float) THREADS_PER_BLOCK), THREADS_PER_BLOCK>>>(n, POP_SIZE, pop1, pop2);
         cudaDeviceSynchronize();
 
         generateRandomNumbersCPU();
 
-        processKernel<<<ceil(POP_SIZE/(float) 1024), 1024>>>(n, POP_SIZE, NUM_MUTATIONS, pop1, pop2, pres, d_cost1, d_X, d_Y, rndm);
+        processKernel<<<ceil(POP_SIZE/(float) THREADS_PER_BLOCK), THREADS_PER_BLOCK>>>(n, POP_SIZE, NUM_MUTATIONS, pop1, pop2, pres, d_cost1, d_X, d_Y, rndm);
         cudaDeviceSynchronize();
 
         terminationKernel<<<1, 1>>>(n, POP_SIZE, pop2, d_cost1, shouldStop, bestSolution);
