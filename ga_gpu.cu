@@ -181,10 +181,33 @@ __device__ void setLeftRight(int id, int n, int **pop2, int idx, int &left, int 
     return;
 }
 
+__device__ void mutateOffspringV2(int id, int n, int NUM_MUTATIONS, int **pop2, float *rndm, double **cost) {
+    int offset = id*(6+2*(NUM_MUTATIONS))+6;
+    for(int mut = 0; mut < NUM_MUTATIONS; mut++) {
+        int a, b;
+        a = n*rndm[offset++];
+        b = n*rndm[offset++];
+        int num1, num2, num1p, num2p;
+        num1 = pop2[id][a];
+        num1p = pop2[id][(a+1)%n];
+        num2 = pop2[id][b];
+        num2p = pop2[id][(b+1)%n];
+
+        float currDist = cost[num1][num1p]+cost[num2][num2p];
+        float newDist = cost[num1][num2p]+cost[num2][num1p];
+
+        if(newDist <= currDist) {
+            int temp = pop2[id][a];
+            pop2[id][a] = pop2[id][b];
+            pop2[id][b] = temp;
+        }
+    }
+    return;
+}
+
 __device__ void mutateOffspring(int id, int n, int NUM_MUTATIONS, int **pop2, float *rndm, double **cost) {
     int offset = id*(6+2*(NUM_MUTATIONS))+6;
     for(int mut = 0; mut < NUM_MUTATIONS; mut++) {
-        double oldfitness = computeFitness(n, pop2, id, cost);
         int a, b;
         a = n*rndm[offset++];
         b = n*rndm[offset++];
@@ -274,7 +297,7 @@ __global__ void processKernel(int n, int POP_SIZE, int NUM_MUTATIONS, int **pop1
     }
 
 
-    mutateOffspring(id, n, NUM_MUTATIONS, pop2, rndm, cost);
+    mutateOffspringV2(id, n, NUM_MUTATIONS, pop2, rndm, cost);
 
     // if(id % 100 == 0 && id < 1000) 
     //     printf("%dth\t allele with solution: %lf\n", id, computeFitness(n, pop2, id, cost));
