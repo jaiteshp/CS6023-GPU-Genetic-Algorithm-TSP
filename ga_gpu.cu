@@ -205,6 +205,29 @@ __device__ void mutateOffspringV2(int id, int n, int NUM_MUTATIONS, int **pop2, 
     return;
 }
 
+__device__ void mutateOffspringV0(int id, int n, int NUM_MUTATIONS, int **pop2, float *rndm, double **cost) {
+    int offset = id*(6+2*(NUM_MUTATIONS))+6;
+    for(int mut = 0; mut < NUM_MUTATIONS; mut++) {
+        double oldfitness = computeFitness(n, pop2, id, cost);
+        int a, b;
+        a = n*rndm[offset++];
+        b = n*rndm[offset++];
+
+        int temp = pop2[id][a];
+        pop2[id][a] = pop2[id][b];
+        pop2[id][b] = temp;
+
+        double newFitness = computeFitness(n, pop2, id, cost);
+
+        if(newFitness > oldfitness) {
+            int temp = pop2[id][a];
+            pop2[id][a] = pop2[id][b];
+            pop2[id][b] = temp;
+        }
+    }
+    return;
+}
+
 __device__ void mutateOffspring(int id, int n, int NUM_MUTATIONS, int **pop2, float *rndm, double **cost) {
     int offset = id*(6+2*(NUM_MUTATIONS))+6;
     for(int mut = 0; mut < NUM_MUTATIONS; mut++) {
@@ -297,7 +320,7 @@ __global__ void processKernel(int n, int POP_SIZE, int NUM_MUTATIONS, int **pop1
     }
 
 
-    mutateOffspringV2(id, n, NUM_MUTATIONS, pop2, rndm, cost);
+    mutateOffspringV0(id, n, NUM_MUTATIONS, pop2, rndm, cost);
 
     // if(id % 100 == 0 && id < 1000) 
     //     printf("%dth\t allele with solution: %lf\n", id, computeFitness(n, pop2, id, cost));
